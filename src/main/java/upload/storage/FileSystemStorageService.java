@@ -1,10 +1,13 @@
 package upload.storage;
 
 import java.nio.file.Path;
+import java.util.Random;
 import java.util.stream.Stream;
 
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -44,7 +47,11 @@ public class FileSystemStorageService implements StorageService {
 	@Override
 	public void store(MultipartFile file) {
 		String filename = StringUtils.cleanPath(file.getOriginalFilename());
+		
 		try {
+			int lenght = file.getBytes().length;
+			
+			
 			if(file.isEmpty()) {
 				throw new StorageException("Failed to store empty file "+ filename);
 			}
@@ -53,13 +60,45 @@ public class FileSystemStorageService implements StorageService {
 			}
 			
 			try(InputStream inputStream = file.getInputStream()){
-				Files.copy(inputStream,this.rootLocation.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+				
+				//Files.copy(inputStream,this.rootLocation.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+				split(filename, lenght, file.getBytes());
 			}
 			
 		} catch (IOException e) {
 			throw new StorageException("Failed to store file "+ filename, e);
 		}
 	}
+	
+	
+	public void split(String fileName, int lenght, byte[] bytes) throws IOException {
+		int parts = new Random().nextInt(19)+1;
+		int chunk = (int)(lenght/parts);
+		int partCounter = 1;
+		for(int i=1; i<=parts;i++) {
+			int start = (i-1)*chunk;
+			int end = i*chunk;
+			if(i==parts)
+				end=lenght-1;
+			byte[] newBytes = copy(bytes, start, end);
+			String filePartName = String.format("%s.%03d", fileName, partCounter++);
+			InputStream inputStream = new ByteArrayInputStream(newBytes);
+			Files.copy(inputStream,this.rootLocation.resolve(filePartName), StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+	
+	public byte[] copy(byte[] whole, int start, int end) {
+		byte[] part = new byte[end-start+1];
+		int j=0;
+		for(int i = start; i<=end; i++) {
+			
+			part[j++] = whole[i];
+		}
+		return part;
+		
+	}
+	
+	
 
 	@Override
 	public Stream<Path> loadAll() {
