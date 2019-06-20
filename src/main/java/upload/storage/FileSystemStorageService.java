@@ -90,7 +90,7 @@ public class FileSystemStorageService implements StorageService {
 	public byte[] copy(byte[] whole, int start, int end) {
 		byte[] part = new byte[end-start+1];
 		int j=0;
-		for(int i = start; i<=end; i++) {
+		for(int i = start; i<end; i++) {
 			
 			part[j++] = whole[i];
 		}
